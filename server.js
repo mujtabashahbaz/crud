@@ -4,10 +4,10 @@ const cors = require("cors");
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: "*" })); // Allows access from any IP
+app.use(cors({ origin: "*" })); // Allows all IPs to access
 
-// ✅ MongoDB Connection
-const uri = "mongodb+srv://mujtabashahbaz:anushkashaukat1@cluster0.ydrmf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+// ✅ MongoDB Connection with New Cluster
+const uri = "mongodb+srv://mujtabashahbaz:anushkashaukat1@cluster1.qcaenoo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1";
 const client = new MongoClient(uri, {
     serverApi: { version: ServerApiVersion.v1, strict: true, deprecationErrors: true }
 });
@@ -19,7 +19,7 @@ async function startServer() {
     try {
         await client.connect();
         collection = client.db("test").collection("items"); // Change "test" to your actual DB name
-        console.log("✅ Connected to MongoDB");
+        console.log("✅ Connected to MongoDB Cluster1");
 
         const PORT = process.env.PORT || 5000;
         app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running on port ${PORT}`));
