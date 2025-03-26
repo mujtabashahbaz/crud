@@ -1,77 +1,70 @@
 const express = require("express");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const mongoose = require("mongoose");
 const cors = require("cors");
+require("dotenv").config(); // Optional, but doesn't require .env
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: "*" })); // Allows all IPs to access
+app.use(cors());
 
-// ✅ MongoDB Connection with New Cluster
-const uri = "mongodb+srv://mujtabashahbaz:anushkashaukat1@cluster1.qcaenoo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1";
-const client = new MongoClient(uri, {
-    serverApi: { version: ServerApiVersion.v1, strict: true, deprecationErrors: true }
-});
+// ✅ MongoDB Connection (Using Render Environment Variable)
+const uri = process.env.MONGO_URI; // Load from Render's environment variables
 
-let collection;
+mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 5000, // Prevents long wait if connection fails
+})
+.then(() => console.log("✅ MongoDB Connected"))
+.catch(err => console.log("❌ DB Connection Error:", err));
 
-// ✅ Connect to MongoDB & Start Server
-async function startServer() {
-    try {
-        await client.connect();
-        collection = client.db("test").collection("items"); // Change "test" to your actual DB name
-        console.log("✅ Connected to MongoDB Cluster1");
-
-        const PORT = process.env.PORT || 5000;
-        app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running on port ${PORT}`));
-    } catch (err) {
-        console.error("❌ MongoDB Connection Error:", err);
-        process.exit(1);
-    }
-}
+// ✅ Define Schema & Model
+const ItemSchema = new mongoose.Schema({ name: String });
+const Item = mongoose.model("Item", ItemSchema);
 
 // ✅ Get all items (READ)
 app.get("/items", async (req, res) => {
     try {
-        const items = await collection.find().toArray();
+        const items = await Item.find();
         res.json(items);
-    } catch (err) {
-        res.status(500).json({ error: "Error fetching items" });
+    } catch (error) {
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
 // ✅ Add a new item (CREATE)
 app.post("/items", async (req, res) => {
     try {
-        const newItem = { name: req.body.name };
-        const result = await collection.insertOne(newItem);
-        res.json({ _id: result.insertedId, ...newItem });
-    } catch (err) {
-        res.status(500).json({ error: "Error adding item" });
+        const newItem = new Item({ name: req.body.name });
+        await newItem.save();
+        res.json(newItem);
+    } catch (error) {
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
 // ✅ Update an item (UPDATE)
 app.put("/items/:id", async (req, res) => {
     try {
-        const updatedItem = await collection.findOneAndUpdate(
-            { _id: new ObjectId(req.params.id) },
-            { $set: { name: req.body.name } },
-            { returnDocument: "after" }
+        const updatedItem = await Item.findByIdAndUpdate(
+            req.params.id, 
+            { name: req.body.name }, 
+            { new: true }
         );
         res.json(updatedItem);
-    } catch (err) {
-        res.status(500).json({ error: "Error updating item" });
+    } catch (error) {
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
 // ✅ Delete an item (DELETE)
 app.delete("/items/:id", async (req, res) => {
     try {
-        await collection.deleteOne({ _id: new ObjectId(req.params.id) });
+        await Item.findByIdAndDelete(req.params.id);
         res.json({ message: "Item deleted" });
-    } catch (err) {
-        res.status(500).json({ error: "Error deleting item" });
+    } catch (error) {
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
-startServer();
+// ✅ Start Server (Listen on all IPs, important for Render)
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running on port ${PORT}`));
